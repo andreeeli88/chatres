@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Send } from "lucide-react";
 import OpenAI from "openai";
-//import key from "./key.json";
+import key from "./key.json";
 
 
 const Chatbot = () => {
@@ -10,7 +10,7 @@ const Chatbot = () => {
     ]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const openai = new OpenAI({ apiKey: "key.OPENAI_KEY", dangerouslyAllowBrowser: true });
+    const openai = new OpenAI({ apiKey: key.OPENAI_KEY, dangerouslyAllowBrowser: true });
 
     const handleSend = async () => {
         if (!input.trim()) return;
