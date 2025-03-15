@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Send } from "lucide-react";
 import OpenAI from "openai";
 import key from "./key.json";
-
+import "./Chatbot.css"; // Importamos el archivo de estilos
 
 const Chatbot = () => {
     const [messages, setMessages] = useState([
@@ -17,50 +17,68 @@ const Chatbot = () => {
         setMessages((prev) => [...prev, { text: input, sender: "user" }]);
         setInput("");
         setLoading(true);
+
         try {
+            // Crear hilo y mensaje en OpenAI
             const thread = await openai.beta.threads.create();
-            await openai.beta.threads.messages.create(thread.id, {
-                role: "user",
-                content: input
-            });
+            await openai.beta.threads.messages.create(thread.id, { role: "user", content: input });
             const run = await openai.beta.threads.runs.create(thread.id, {
                 assistant_id: "asst_tcokIiZ4KMTuRqKAWrh1HQb9"
             });
+
             // Esperar a que la ejecución termine
             let runStatus;
             do {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1 segundo
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
             } while (runStatus.status === "in_progress");
-            const messages = await openai.beta.threads.messages.list(thread.id);
-            const responseText = messages.data[0]?.content[0]?.text?.value || "No tengo una respuesta.";
-            setMessages((prev) => [...prev, { text: responseText, sender: "bot" }]);
+
+            // Obtener respuesta del asistente
+            const messagesData = await openai.beta.threads.messages.list(thread.id);
+            const responseText = messagesData.data[0]?.content[0]?.text?.value || "No tengo una respuesta.";
+
+            // Iniciar simulación de streaming
+            let streamedResponse = "";
+            setMessages((prev) => [...prev, { text: "", sender: "bot", id: thread.id }]);
+
+            for (let i = 0; i < responseText.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 50)); // Simular retraso
+                streamedResponse += responseText[i];
+
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === thread.id ? { ...msg, text: streamedResponse } : msg
+                    )
+                );
+            }
+
         } catch (error) {
             console.error("Error con OpenAI:", error);
             setMessages((prev) => [...prev, { text: "Hubo un error en la solicitud.", sender: "bot" }]);
         }
+
         setLoading(false);
     };
 
     return (
-        <div style={{ maxWidth: "400px", margin: "20px auto", padding: "10px", border: "1px solid #ddd", borderRadius: "10px" }}>
-            <div style={{ height: "300px", overflowY: "auto", padding: "10px", borderBottom: "1px solid #ddd" }}>
+        <div className="chatbot-container">
+            <div className="chatbot-messages">
                 {messages.map((msg, index) => (
-                    <div key={index} style={{ padding: "5px", backgroundColor: msg.sender === "user" ? "#cce5ff" : "#e2e2e2", textAlign: msg.sender === "user" ? "right" : "left", borderRadius: "10px", marginBottom: "5px" }}>
+                    <div key={index} className={msg.sender === "user" ? "message-user" : "message-bot"}>
                         {msg.text}
                     </div>
                 ))}
             </div>
-            <div style={{ display: "flex", marginTop: "10px" }}>
+            <div className="chatbot-input-container">
                 <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Escribe tu mensaje..."
-                    style={{ flexGrow: 1, padding: "5px" }}
+                    className="chatbot-input"
                     disabled={loading}
                 />
-                <button onClick={handleSend} style={{ marginLeft: "5px", padding: "5px", cursor: "pointer" }} disabled={loading}>
+                <button onClick={handleSend} className="chatbot-button" disabled={loading}>
                     <Send size={18} />
                 </button>
             </div>
